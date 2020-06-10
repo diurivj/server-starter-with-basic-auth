@@ -13,24 +13,19 @@ const routeGuard = require('../configs/route-guard.config');
 ///////////////////////////// SIGNUP //////////////////////////////////
 ////////////////////////////////////////////////////////////////////////
 
-// .get() route ==> to display the signup form to users
-router.get('/signup', (req, res) => res.render('auth/signup'));
-
 // .post() route ==> to process form data
-router.post('/signup', (req, res, next) => {
+router.post('/api/signup', (req, res, next) => {
   const { username, email, password } = req.body;
 
   if (!username || !email || !password) {
-    res.render('auth/signup', { errorMessage: 'All fields are mandatory. Please provide your username, email and password.' });
+    res.status(401).json({ message: 'All fields are mandatory. Please provide your username, email and password.' });
     return;
   }
 
   // make sure passwords are strong:
   const regex = /(?=.*\d)(?=.*[a-z])(?=.*[A-Z]).{6,}/;
   if (!regex.test(password)) {
-    res
-      .status(500)
-      .render('auth/signup', { errorMessage: 'Password needs to have at least 6 chars and must contain at least one number, one lowercase and one uppercase letter.' });
+    res.status(500).json({ message: 'Password needs to have at least 6 chars and must contain at least one number, one lowercase and one uppercase letter.' });
     return;
   }
 
@@ -49,15 +44,15 @@ router.post('/signup', (req, res, next) => {
       });
     })
     .then(userFromDB => {
-      console.log('Newly created user is: ', userFromDB);
-      res.redirect('/userProfile');
+      userFromDB.passwordHash = undefined;
+      res.status(200).json({ userFromDB });
     })
     .catch(error => {
       if (error instanceof mongoose.Error.ValidationError) {
-        res.status(500).render('auth/signup', { errorMessage: error.message });
+        res.status(500).json({ message: error.message });
       } else if (error.code === 11000) {
-        res.status(500).render('auth/signup', {
-          errorMessage: 'Username and email need to be unique. Either username or email is already used.'
+        res.status(500).json({
+          message: 'Username and email need to be unique. Either username or email is already used.'
         });
       } else {
         next(error);
@@ -69,46 +64,51 @@ router.post('/signup', (req, res, next) => {
 ///////////////////////////// LOGIN ////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////
 
-// .get() route ==> to display the login form to users
-router.get('/login', (req, res) => res.render('auth/login'));
-
 // .post() login route ==> to process form data
-router.post('/login', (req, res, next) => {
+router.post('/api/login', (req, res, next) => {
   const { email, password } = req.body;
 
   if (email === '' || password === '') {
-    res.render('auth/login', {
-      errorMessage: 'Please enter both, email and password to login.'
-    });
+    res.status(401).json({ message: 'Please enter both, email and password to login.' });
     return;
   }
 
   User.findOne({ email })
     .then(user => {
       if (!user) {
-        res.render('auth/login', { errorMessage: 'Email is not registered. Try with other email.' });
+        res.status(401).json({ message: 'Email is not registered. Try with other email.' });
         return;
       } else if (bcryptjs.compareSync(password, user.passwordHash)) {
         req.session.currentUser = user;
-        res.redirect('/userProfile');
+        user.passwordHash = undefined;
+        res.status(200).json({ user });
       } else {
-        res.render('auth/login', { errorMessage: 'Incorrect password.' });
+        res.status(401).json({ message: 'Incorrect password.' });
       }
     })
     .catch(error => next(error));
 });
 
 ////////////////////////////////////////////////////////////////////////
-///////////////////////////// LOGOUT ////////////////////////////////////
+///////////////////////////// LOGOUT ///////////////////////////////////
 ////////////////////////////////////////////////////////////////////////
 
-router.post('/logout', (req, res) => {
+router.post('/api/logout', (req, res) => {
   req.session.destroy();
-  res.redirect('/');
+  res.status(200).json({ message: 'Successfully logged out!' });
 });
 
-router.get('/userProfile', routeGuard, (req, res) => {
-  res.render('users/user-profile');
+////////////////////////////////////////////////////////////////////////
+///////////////////// CHECK IF LOGGED IN ///////////////////////////////
+////////////////////////////////////////////////////////////////////////
+
+router.get('/api/isLoggedIn', (req, res) => {
+  if (req.session.currentUser) {
+    req.session.currentUser.passwordHash = undefined;
+    res.status(200).json({ user: req.session.currentUser });
+    return;
+  }
+  res.status(401).json({ message: 'Unauthorized access!' });
 });
 
 module.exports = router;

@@ -1,16 +1,17 @@
-## Project 2 boilerplate with basic auth
+## Server starter code with basic auth
 
 ### Provided code
 
 This boilerplate has:
 
 - already established connection with database
-- user signup: `/signup`
-- user login: `/login`
-- user logout: `/logout`
-- user profile page: `/userProfile`
+- user signup: `/api/signup`
+- user login: `/api/login`
+- user logout: `/api/logout`
+- check if user is logged in: `/api/isLoggedIn`
 - route guard middleware
-- `user` set as locals to be used in views middleware
+- sessions middleware
+- CORS middleware
 
 ### Using the boilerplate
 
@@ -18,10 +19,10 @@ To use this project as your starter code, follow these steps:
 
 ```shell
 # clone the project
-$ git clone https://github.com/ironhack-labs/p2-boilerplate-with-basic-auth.git
+$ git clone https://github.com/ironhack-labs/server-starter-with-basic-auth.git
 
 # navigate to the project
-$ cd p2-boilerplate-with-basic-auth
+$ cd https://github.com/ironhack-labs/server-starter-with-basic-auth.git
 
 # remove .git
 $ rm -rf .git
@@ -41,4 +42,6 @@ $ npm i
 
 # run the app
 $ npm run dev
+
+# the app will run on the PORT 3001
 ```

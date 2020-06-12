@@ -47,17 +47,16 @@ router.post('/api/signup', async (req, res) => {
 ///////////////////////////// LOGIN ////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////
 
-router.post(
-  '/api/login',
-  passport.authenticate('local', {
-    passReqToCallback: true
-  }),
-  (req, res) => {
-    const { user } = req;
-    user.passwordHash = undefined;
-    return res.status(200).json({ user });
-  }
-);
+router.post('/api/login', (req, res, next) => {
+  passport.authenticate('local', (err, user, info) => {
+    if (err) return res.status(500).json({ err, info });
+    if (!user) return res.status(401).json({ err: { ...info } });
+    req.login(user, error => {
+      if (error) return res.status(401).json({ error });
+      return res.status(200).json({ user });
+    });
+  })(req, res, next);
+});
 
 ////////////////////////////////////////////////////////////////////////
 ///////////////////////////// LOGOUT ///////////////////////////////////

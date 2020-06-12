@@ -4,7 +4,6 @@ const path = require('path'); // here
 const express = require('express'); // here
 const logger = require('morgan'); // here
 const cors = require('cors');
-
 const cookieParser = require('cookie-parser'); // here
 
 // Set up the database

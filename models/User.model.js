@@ -1,6 +1,7 @@
 // models/User.model.js
 
 const { Schema, model } = require('mongoose');
+const passportLocalMongoose = require('passport-local-mongoose');
 
 const userSchema = new Schema(
   {
@@ -16,15 +17,14 @@ const userSchema = new Schema(
       unique: true,
       lowercase: true,
       trim: true
-    },
-    passwordHash: {
-      type: String,
-      required: [true, 'Password is required.']
     }
   },
   {
     timestamps: true
   }
 );
+
+// We specify which field from our model will be the 'username field' to register our user.
+userSchema.plugin(passportLocalMongoose, { usernameField: 'email' });
 
 module.exports = model('User', userSchema);

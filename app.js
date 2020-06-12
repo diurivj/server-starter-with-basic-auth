@@ -1,6 +1,6 @@
 require('dotenv').config();
 
-const path = require('path'); // here
+// const path = require('path'); // here
 const express = require('express'); // here
 const logger = require('morgan'); // here
 const cors = require('cors');
@@ -24,9 +24,6 @@ app.use(
     //                   in axios "withCredentials: true"
   })
 );
-
-// Express session
-require('./configs/session.config')(app);
 
 // Passport
 require('./configs/passport')(app);

@@ -3,6 +3,7 @@
 const router = require('express').Router();
 const User = require('../models/User.model');
 const passport = require('passport');
+const { signToken, verifyToken } = require('../configs/jwt');
 
 ////////////////////////////////////////////////////////////////////////
 ///////////////////////////// SIGNUP //////////////////////////////////
@@ -18,6 +19,8 @@ router.post('/api/signup', async (req, res) => {
   // Check if is a user is already registered
   try {
     const userRegitered = await User.register({ email, name }, password);
+    userRegitered.salt = undefined;
+    userRegitered.hash = undefined;
     return res.status(201).json({ userRegitered });
   } catch (err) {
     return res.status(500).json({ err });
@@ -32,10 +35,10 @@ router.post('/api/login', (req, res, next) => {
   passport.authenticate('local', (err, user, info) => {
     if (err) return res.status(500).json({ err, info });
     if (!user) return res.status(401).json({ err: { ...info } });
-    req.login(user, error => {
-      if (error) return res.status(401).json({ error });
-      return res.status(200).json({ user });
-    });
+    const token = signToken(user);
+    user.salt = undefined;
+    user.hash = undefined;
+    return res.status(200).json({ user, token }); // You should store the token in your front end app, (e.g context, local storage, state)
   })(req, res, next);
 });
 
@@ -52,14 +55,16 @@ router.post('/api/logout', (req, res) => {
 ///////////////////// CHECK IF LOGGED IN ///////////////////////////////
 ////////////////////////////////////////////////////////////////////////
 
-router.get('/api/isLoggedIn', (req, res) => {
-  if (req.isAuthenticated()) {
-    const { user } = req;
-    user.passwordHash = undefined;
-    return res.status(200).json({ user });
-  } else {
-    return res.status(401).json({ message: 'Unauthorized access!' });
-  }
+router.get('/api/isLoggedIn', verifyToken, (req, res) => {
+  User.findById(req.token.sub)
+    .then(user => {
+      user.salt = undefined;
+      user.hash = undefined;
+      return res.status(200).json({ user });
+    })
+    .catch(err => {
+      return res.status(501).json({ err });
+    });
 });
 
 module.exports = router;

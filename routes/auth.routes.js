@@ -1,101 +1,71 @@
 // routes/auth.routes.js
 
-const { Router } = require('express');
-const router = new Router();
+const router = require('express').Router();
 const bcryptjs = require('bcryptjs');
 const saltRounds = 10;
 const User = require('../models/User.model');
-const mongoose = require('mongoose');
-
-const routeGuard = require('../configs/route-guard.config');
+const passport = require('passport');
 
 ////////////////////////////////////////////////////////////////////////
 ///////////////////////////// SIGNUP //////////////////////////////////
 ////////////////////////////////////////////////////////////////////////
 
-// .post() route ==> to process form data
-router.post('/api/signup', (req, res, next) => {
-  const { username, email, password } = req.body;
+router.post('/api/signup', async (req, res) => {
+  const { name, email, password } = req.body;
 
-  if (!username || !email || !password) {
-    res.status(401).json({ message: 'All fields are mandatory. Please provide your username, email and password.' });
-    return;
+  if (!name || !email || !password) {
+    return res.status(401).json({ message: 'All fields are mandatory. Please provide your name, email and password.' });
+  }
+
+  // Check if is a user is already registered
+  try {
+    const user = await User.findOne({ email });
+    if (user) return res.status(500).json({ message: 'User already exists' });
+  } catch (err) {
+    return res.status(500).json({ message: err });
   }
 
   // make sure passwords are strong:
   const regex = /(?=.*\d)(?=.*[a-z])(?=.*[A-Z]).{6,}/;
   if (!regex.test(password)) {
-    res.status(500).json({ message: 'Password needs to have at least 6 chars and must contain at least one number, one lowercase and one uppercase letter.' });
-    return;
+    return res.status(500).json({ message: 'Password needs to have at least 6 chars and must contain at least one number, one lowercase and one uppercase letter.' });
   }
 
-  bcryptjs
-    .genSalt(saltRounds)
-    .then(salt => bcryptjs.hash(password, salt))
-    .then(hashedPassword => {
-      return User.create({
-        // username: username
-        username,
-        email,
-        // passwordHash => this is the key from the User model
-        //     ^
-        //     |            |--> this is placeholder (how we named returning value from the previous method (.hash()))
-        passwordHash: hashedPassword
-      });
-    })
-    .then(userFromDB => {
-      userFromDB.passwordHash = undefined;
-      res.status(200).json({ userFromDB });
-    })
-    .catch(error => {
-      if (error instanceof mongoose.Error.ValidationError) {
-        res.status(500).json({ message: error.message });
-      } else if (error.code === 11000) {
-        res.status(500).json({
-          message: 'Username and email need to be unique. Either username or email is already used.'
-        });
-      } else {
-        next(error);
-      }
-    }); // close .catch()
+  const salt = bcryptjs.genSaltSync(saltRounds);
+  const passwordHash = bcryptjs.hashSync(password, salt);
+
+  try {
+    const userRegistered = await User.create({ name, email, passwordHash });
+    userRegistered.passwordHash = undefined;
+    return res.status(201).json({ userRegistered });
+  } catch (err) {
+    return res.status(500).json({ message: err });
+  }
 });
 
 ////////////////////////////////////////////////////////////////////////
 ///////////////////////////// LOGIN ////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////
 
-// .post() login route ==> to process form data
-router.post('/api/login', (req, res, next) => {
-  const { email, password } = req.body;
-
-  if (email === '' || password === '') {
-    res.status(401).json({ message: 'Please enter both, email and password to login.' });
-    return;
+router.post(
+  '/api/login',
+  passport.authenticate('local', {
+    passReqToCallback: true
+  }),
+  (req, res) => {
+    const { user } = req;
+    user.passwordHash = undefined;
+    return res.status(200).json({ user });
   }
-
-  User.findOne({ email })
-    .then(user => {
-      if (!user) {
-        res.status(401).json({ message: 'Email is not registered. Try with other email.' });
-        return;
-      } else if (bcryptjs.compareSync(password, user.passwordHash)) {
-        req.session.currentUser = user;
-        user.passwordHash = undefined;
-        res.status(200).json({ user });
-      } else {
-        res.status(401).json({ message: 'Incorrect password.' });
-      }
-    })
-    .catch(error => next(error));
-});
+);
 
 ////////////////////////////////////////////////////////////////////////
 ///////////////////////////// LOGOUT ///////////////////////////////////
 ////////////////////////////////////////////////////////////////////////
 
 router.post('/api/logout', (req, res) => {
-  req.session.destroy();
-  res.status(200).json({ message: 'Successfully logged out!' });
+  req.logout();
+  res.status(200).json({ message: 'Logged out' });
 });
 
 ////////////////////////////////////////////////////////////////////////
@@ -103,12 +73,13 @@ router.post('/api/logout', (req, res) => {
 ////////////////////////////////////////////////////////////////////////
 
 router.get('/api/isLoggedIn', (req, res) => {
-  if (req.session.currentUser) {
-    req.session.currentUser.passwordHash = undefined;
-    res.status(200).json({ user: req.session.currentUser });
-    return;
+  if (req.isAuthenticated()) {
+    const { user } = req;
+    user.passwordHash = undefined;
+    return res.status(200).json({ user });
+  } else {
+    return res.status(401).json({ message: 'Unauthorized access!' });
   }
-  res.status(401).json({ message: 'Unauthorized access!' });
 });
 
 module.exports = router;

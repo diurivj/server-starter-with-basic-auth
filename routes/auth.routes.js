@@ -14,7 +14,7 @@ const routeGuard = require('../configs/route-guard.config');
 ////////////////////////////////////////////////////////////////////////
 
 // .post() route ==> to process form data
-router.post('/api/signup', (req, res, next) => {
+router.post('/signup', (req, res, next) => {
   const { username, email, password } = req.body;
 
   if (!username || !email || !password) {
@@ -65,7 +65,7 @@ router.post('/api/signup', (req, res, next) => {
 ////////////////////////////////////////////////////////////////////////
 
 // .post() login route ==> to process form data
-router.post('/api/login', (req, res, next) => {
+router.post('/login', (req, res, next) => {
   const { email, password } = req.body;
 
   if (email === '' || password === '') {
@@ -93,7 +93,7 @@ router.post('/api/login', (req, res, next) => {
 ///////////////////////////// LOGOUT ///////////////////////////////////
 ////////////////////////////////////////////////////////////////////////
 
-router.post('/api/logout', (req, res) => {
+router.post('/logout', (req, res) => {
   req.session.destroy();
   res.status(200).json({ message: 'Successfully logged out!' });
 });
@@ -102,7 +102,7 @@ router.post('/api/logout', (req, res) => {
 ///////////////////// CHECK IF LOGGED IN ///////////////////////////////
 ////////////////////////////////////////////////////////////////////////
 
-router.get('/api/isLoggedIn', (req, res) => {
+router.get('/isLoggedIn', (req, res) => {
   if (req.session.currentUser) {
     req.session.currentUser.passwordHash = undefined;
     res.status(200).json({ user: req.session.currentUser });
